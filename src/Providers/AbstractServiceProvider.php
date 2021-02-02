@@ -12,8 +12,9 @@
 namespace Tymon\JWTAuth\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Lcobucci\JWT\Builder as JWTBuilder;
-use Lcobucci\JWT\Parser as JWTParser;
+use Lcobucci\JWT\Configuration;
+use Lcobucci\JWT\Signer\Hmac\Sha256 as HS256;
+use Lcobucci\JWT\Signer\Key\InMemory;
 use Namshi\JOSE\JWS;
 use Tymon\JWTAuth\Blacklist;
 use Tymon\JWTAuth\Claims\Factory as ClaimFactory;
@@ -167,10 +168,17 @@ abstract class AbstractServiceProvider extends ServiceProvider
      */
     protected function registerLcobucciProvider()
     {
-        $this->app->singleton('tymon.jwt.provider.jwt.lcobucci', function ($app) {
+        $config = Configuration::forSymmetricSigner(
+            new HS256(),
+            InMemory::plainText($this->config('secret'))
+        );
+
+        $config->builder();
+
+        $this->app->singleton('tymon.jwt.provider.jwt.lcobucci', function () use ($config) {
             return new Lcobucci(
-                new JWTBuilder(),
-                new JWTParser(),
+                $config->builder(),
+                $config->parser(),
                 $this->config('secret'),
                 $this->config('algo'),
                 $this->config('keys')

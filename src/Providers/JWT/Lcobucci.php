@@ -22,12 +22,12 @@ use Lcobucci\JWT\Signer\Ecdsa\Sha512 as ES512;
 use Lcobucci\JWT\Signer\Hmac\Sha256 as HS256;
 use Lcobucci\JWT\Signer\Hmac\Sha384 as HS384;
 use Lcobucci\JWT\Signer\Hmac\Sha512 as HS512;
-use Lcobucci\JWT\Signer\Key;
-use Lcobucci\JWT\Signer\Keychain;
+use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa;
 use Lcobucci\JWT\Signer\Rsa\Sha256 as RS256;
 use Lcobucci\JWT\Signer\Rsa\Sha384 as RS384;
 use Lcobucci\JWT\Signer\Rsa\Sha512 as RS512;
+use Lcobucci\JWT\Token\Plain;
 use ReflectionClass;
 use Tymon\JWTAuth\Contracts\Providers\JWT;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -98,7 +98,7 @@ class Lcobucci extends Provider implements JWT
      *
      * @throws \Tymon\JWTAuth\Exceptions\JWTException
      *
-     * @return string
+     * @return Plain
      */
     public function encode(array $payload)
     {
@@ -107,12 +107,12 @@ class Lcobucci extends Provider implements JWT
 
         try {
             $signingKey = $this->getSigningKey();
-            $signingKey = is_string($signingKey) ? new Key($signingKey) : $signingKey;
+            $signingKey = is_string($signingKey) ? InMemory::plainText($signingKey) : $signingKey;
             foreach ($payload as $key => $value) {
                 $this->builder->set($key, $value);
             }
 
-            return (string) $this->builder->getToken($this->signer, $signingKey);
+            return $this->builder->getToken($this->signer, $signingKey);
         } catch (Exception $e) {
             throw new JWTException('Could not create token: '.$e->getMessage(), $e->getCode(), $e);
         }
@@ -136,7 +136,7 @@ class Lcobucci extends Provider implements JWT
         }
 
         $verificationKey = $this->getVerificationKey();
-        $verificationKey = is_string($verificationKey) ? new Key($verificationKey) : $verificationKey;
+        $verificationKey = is_string($verificationKey) ? InMemory::plainText($verificationKey) : $verificationKey;
 
         if (! $jwt->verify($this->signer, $verificationKey)) {
             throw new TokenInvalidException('Token Signature could not be verified.');
@@ -179,7 +179,7 @@ class Lcobucci extends Provider implements JWT
     protected function getSigningKey()
     {
         return $this->isAsymmetric() ?
-            (new Keychain())->getPrivateKey($this->getPrivateKey(), $this->getPassphrase()) :
+            InMemory::plainText($this->getPrivateKey(), $this->getPassphrase() ?? '') :
             $this->getSecret();
     }
 
@@ -189,7 +189,7 @@ class Lcobucci extends Provider implements JWT
     protected function getVerificationKey()
     {
         return $this->isAsymmetric() ?
-            (new Keychain())->getPublicKey($this->getPublicKey()) :
+            InMemory::plainText($this->getPublicKey()) :
             $this->getSecret();
     }
 }

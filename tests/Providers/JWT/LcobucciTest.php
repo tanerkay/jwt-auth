@@ -14,8 +14,9 @@ namespace Tymon\JWTAuth\Test\Providers\JWT;
 use InvalidArgumentException;
 use Lcobucci\JWT\Builder;
 use Lcobucci\JWT\Parser;
-use Lcobucci\JWT\Signer\Key;
+use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Token;
+use Lcobucci\JWT\Token\DataSet;
 use Mockery;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
@@ -61,12 +62,16 @@ class LcobucciTest extends AbstractTestCase
         $this->builder->shouldReceive('unsign')->once()->andReturnSelf();
         $this->builder->shouldReceive('set')->times(count($payload));
         $this->builder->shouldReceive('getToken')->once()
-            ->with(Mockery::any(), Mockery::type(Key::class))
-            ->andReturn('foo.bar.baz');
+            ->with(Mockery::any(), Mockery::type(InMemory::class))
+            ->andReturn(new Token\Plain(
+                new Token\DataSet([], 'foo'),
+                new Token\DataSet([], 'bar'),
+                new Token\Signature('', 'baz')
+            ));
 
         $token = $this->getProvider('secret', 'HS256')->encode($payload);
 
-        $this->assertSame('foo.bar.baz', $token);
+        $this->assertSame('foo.bar.baz', $token->toString());
     }
 
     /** @test */
@@ -90,7 +95,7 @@ class LcobucciTest extends AbstractTestCase
 
         $this->parser->shouldReceive('parse')->once()->with('foo.bar.baz')->andReturn(Mockery::self());
         $this->token->shouldReceive('verify')->once()
-            ->with(Mockery::any(), Mockery::type(Key::class))
+            ->with(Mockery::any(), Mockery::type(InMemory::class))
             ->andReturn(true);
         $this->token->shouldReceive('getClaims')->once()->andReturn($payload);
 
@@ -105,7 +110,7 @@ class LcobucciTest extends AbstractTestCase
 
         $this->parser->shouldReceive('parse')->once()->with('foo.bar.baz')->andReturn(Mockery::self());
         $this->token->shouldReceive('verify')->once()
-            ->with(Mockery::any(), Mockery::type(Key::class))
+            ->with(Mockery::any(), Mockery::type(InMemory::class))
             ->andReturn(false);
         $this->token->shouldReceive('getClaims')->never();
 
@@ -139,12 +144,16 @@ class LcobucciTest extends AbstractTestCase
         $this->builder->shouldReceive('unsign')->once()->andReturnSelf();
         $this->builder->shouldReceive('set')->times(count($payload));
         $this->builder->shouldReceive('getToken')->once()
-            ->with(Mockery::any(), Mockery::type(Key::class))
-            ->andReturn('foo.bar.baz');
+            ->with(Mockery::any(), Mockery::type(InMemory::class))
+            ->andReturn(new Token\Plain(
+                new Token\DataSet([], 'foo'),
+                new Token\DataSet([], 'bar'),
+                new Token\Signature('', 'baz')
+            ));
 
         $token = $provider->encode($payload);
 
-        $this->assertSame('foo.bar.baz', $token);
+        $this->assertSame('foo.bar.baz', $token->toString());
     }
 
     /** @test */
