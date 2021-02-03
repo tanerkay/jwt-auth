@@ -15,6 +15,7 @@ use Exception;
 use Illuminate\Support\Collection;
 use Lcobucci\JWT\Builder;
 use Lcobucci\JWT\Parser;
+use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Ecdsa;
 use Lcobucci\JWT\Signer\Ecdsa\Sha256 as ES256;
 use Lcobucci\JWT\Signer\Ecdsa\Sha384 as ES384;
@@ -48,6 +49,13 @@ class Lcobucci extends Provider implements JWT
      * @var \Lcobucci\JWT\Parser
      */
     protected $parser;
+
+    /**
+     * The Signer instance.
+     *
+     * @var \Lcobucci\JWT\Signer
+     */
+    protected $signer;
 
     /**
      * Create the Lcobucci provider.
@@ -102,14 +110,11 @@ class Lcobucci extends Provider implements JWT
      */
     public function encode(array $payload)
     {
-        // Remove the signature on the builder instance first.
-        $this->builder->unsign();
-
         try {
             $signingKey = $this->getSigningKey();
             $signingKey = is_string($signingKey) ? InMemory::plainText($signingKey) : $signingKey;
             foreach ($payload as $key => $value) {
-                $this->builder->set($key, $value);
+                $this->builder->withClaim($key, $value);
             }
 
             return $this->builder->getToken($this->signer, $signingKey);
@@ -138,11 +143,11 @@ class Lcobucci extends Provider implements JWT
         $verificationKey = $this->getVerificationKey();
         $verificationKey = is_string($verificationKey) ? InMemory::plainText($verificationKey) : $verificationKey;
 
-        if (! $jwt->verify($this->signer, $verificationKey)) {
+        if (! $this->signer->verify($jwt->signature()->hash(), $jwt->payload(), $verificationKey)) {
             throw new TokenInvalidException('Token Signature could not be verified.');
         }
 
-        return (new Collection($jwt->getClaims()))->map(function ($claim) {
+        return (new Collection($jwt->claims()))->map(function ($claim) {
             return is_object($claim) ? $claim->getValue() : $claim;
         })->toArray();
     }
@@ -154,7 +159,7 @@ class Lcobucci extends Provider implements JWT
      *
      * @return \Lcobucci\JWT\Signer
      */
-    protected function getSigner()
+    protected function getSigner(): Signer
     {
         if (! array_key_exists($this->algo, $this->signers)) {
             throw new JWTException('The given algorithm could not be found');
@@ -166,7 +171,7 @@ class Lcobucci extends Provider implements JWT
     /**
      * {@inheritdoc}
      */
-    protected function isAsymmetric()
+    protected function isAsymmetric(): bool
     {
         $reflect = new ReflectionClass($this->signer);
 
