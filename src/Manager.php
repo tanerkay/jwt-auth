@@ -83,6 +83,10 @@ class Manager
     {
         $token = $this->provider->encode($payload->get());
 
+        if ($token instanceof \Lcobucci\JWT\Token) {
+            $token = $token->toString();
+        }
+
         return new Token($token);
     }
 

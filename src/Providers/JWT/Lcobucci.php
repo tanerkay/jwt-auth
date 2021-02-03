@@ -29,6 +29,7 @@ use Lcobucci\JWT\Signer\Rsa\Sha256 as RS256;
 use Lcobucci\JWT\Signer\Rsa\Sha384 as RS384;
 use Lcobucci\JWT\Signer\Rsa\Sha512 as RS512;
 use Lcobucci\JWT\Token\Plain;
+use Lcobucci\JWT\Token\RegisteredClaims;
 use ReflectionClass;
 use Tymon\JWTAuth\Contracts\Providers\JWT;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -114,7 +115,33 @@ class Lcobucci extends Provider implements JWT
             $signingKey = $this->getSigningKey();
             $signingKey = is_string($signingKey) ? InMemory::plainText($signingKey) : $signingKey;
             foreach ($payload as $key => $value) {
-                $this->builder->withClaim($key, $value);
+                switch ($key) {
+                    case RegisteredClaims::ALL:
+                        foreach ($value as $audience) {
+                            $this->builder->permittedFor($audience);
+                        }
+                        break;
+                    case RegisteredClaims::EXPIRATION_TIME:
+                        $this->builder->expiresAt($value);
+                        break;
+                    case RegisteredClaims::ID:
+                        $this->builder->identifiedBy($value);
+                        break;
+                    case RegisteredClaims::ISSUED_AT:
+                        $this->builder->issuedAt($value);
+                        break;
+                    case RegisteredClaims::ISSUER:
+                        $this->builder->issuedBy($value);
+                        break;
+                    case RegisteredClaims::NOT_BEFORE:
+                        $this->builder->canOnlyBeUsedAfter($value);
+                        break;
+                    case RegisteredClaims::SUBJECT:
+                        $this->builder->relatedTo($value);
+                        break;
+                    default:
+                        $this->builder->withClaim($key, $value);
+                }
             }
 
             return $this->builder->getToken($this->signer, $signingKey);
